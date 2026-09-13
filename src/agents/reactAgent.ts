@@ -10,11 +10,13 @@ import { listMaterialsTool, readMaterialTool } from "../tools/materials.ts";
 import { formatWeChatTool } from "../tools/formatSkill.ts";
 import { buildPublishTool } from "../tools/publish.ts";
 import { delegateToWriter } from "./writerAgent.ts";
+import { webSearchTool } from "../tools/search.ts";
+import { SEARCH_API_KEY, SEARCH_PROVIDER } from "../config.ts";
 
-const REACT_PROMPT = `你是「公众号文章生产流水线」的主控 ReAct Agent。给定选题（可能附带素材笔记），按步骤完成，每一步先思考再行动（Thought → Action → Observation）：
+const REACT_PROMPT = `你是「公众号文章生产流水线」的主控 ReAct Agent。给定选题（可能附带素材笔记与联网事实研究），按步骤完成，每一步先思考再行动（Thought → Action → Observation）：
 
-1. 整理素材：用户消息里如果附了素材笔记，直接提炼要点；如果素材不够且提供了 list_materials / read_material 或其他检索工具，可以按需补充取材。素材为空就跳过，直接进入写作。
-2. 写作：调用 delegate_to_writer，传入选题 + 想表达的核心观点 + 素材笔记，取回 Markdown 正文。
+1. 整理素材：用户消息里如果附了素材笔记与联网研究（<untrusted_web_research>），直接提炼核心事实与观点；如果觉得事实论据不足且提供了 web_search / read_material 等检索工具，可以按需补充检索取材。素材为空就跳过，直接进入写作。
+2. 写作：调用 delegate_to_writer，传入选题 + 想表达的核心观点 + 素材笔记 + 联网事实资料（researchNotes，如果有），取回 Markdown 正文。
 3. 排版：调用 format_wechat，把 Markdown 正文转成微信可用 HTML。
 
 校验失败后的修订由 Harness 的轻量 refine 节点负责，主控无需重新运行。`;
@@ -35,6 +37,11 @@ export async function buildReactAgent(): Promise<Cached> {
   let mcpClient: MultiServerMCPClient | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tools: any[] = [listMaterialsTool, readMaterialTool, delegateToWriter, formatWeChatTool];
+
+  // 挂载联网搜索工具（当配置了合法 Key 时）
+  if (SEARCH_API_KEY && SEARCH_PROVIDER !== "none") {
+    tools.push(webSearchTool);
+  }
 
   if (isMcpEnabled()) {
     const { client, tools: mcpTools } = await loadMcpTools();

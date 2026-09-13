@@ -71,6 +71,18 @@ export const API_MAX_BODY_BYTES = Math.max(
 export const MAX_CONCURRENT_RUNS = Math.max(1, Number(process.env.MAX_CONCURRENT_RUNS ?? 1));
 export const API_TOKEN = process.env.API_TOKEN?.trim() ?? "";
 
+// === 联网搜索与事实研究配置（支持 Tavily / Serper / Bocha / 自定义 Search API）===
+export const SEARCH_PROVIDER = (process.env.SEARCH_PROVIDER ?? "tavily").toLowerCase();
+export const SEARCH_API_KEY =
+  process.env.SEARCH_API_KEY ??
+  process.env.TAVILY_API_KEY ??
+  process.env.SERPER_API_KEY ??
+  process.env.BOCHA_API_KEY ??
+  "";
+export const SEARCH_BASE_URL = process.env.SEARCH_BASE_URL ?? "";
+export const SEARCH_MAX_RESULTS = Math.max(1, Math.min(20, Number(process.env.SEARCH_MAX_RESULTS ?? 5)));
+export const ENABLE_AUTO_RESEARCH = process.env.ENABLE_AUTO_RESEARCH === "1";
+
 // === 可选：通用 MCP 素材服务（不设 MCP_COMMAND 则不启用）===
 export const MCP_COMMAND = process.env.MCP_COMMAND ?? "";
 export const MCP_ARGS = (process.env.MCP_ARGS ?? "").split(" ").filter(Boolean);

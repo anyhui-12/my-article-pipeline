@@ -9,6 +9,10 @@ config/accounts.json
 materials/*
 !materials/README.md
 
+# covers/ 下除仓库自带的默认封面外，均为运行时生成产物
+covers/*
+!covers/default.png
+
 *.log
 .DS_Store
 .claude/

@@ -91,6 +91,9 @@ async function main(): Promise<void> {
   const notes = await collectNotes();
   console.log(`素材：${notes ? `${notes.length} 字符` : "无（凭模型自身知识写作）"}`);
 
+  const enableResearch = hasFlag("--research") ? true : hasFlag("--no-research") ? false : null;
+  console.log(`联网研究：${enableResearch === true ? "强制开启" : enableResearch === false ? "显式关闭" : "自动（按需）"}`);
+
   const { toolNames } = await buildReactAgent();
   console.log(`[react] 工具集：${toolNames.join(", ")}\n`);
 
@@ -100,7 +103,7 @@ async function main(): Promise<void> {
 
   const threadId = `harness-${Date.now()}`;
   const stream = await harness.stream(
-    { topic, notes, messages: [new HumanMessage(initialMsg)] },
+    { topic, notes, enableResearch, messages: [new HumanMessage(initialMsg)] },
     { configurable: { thread_id: threadId }, streamMode: ["updates"], recursionLimit: 80 },
   );
 
@@ -137,6 +140,7 @@ async function main(): Promise<void> {
   const finalTitle = (snap.values.title as string) ?? topic;
   const finalArticle = (snap.values.article as string) ?? null;
   const finalHtml = (snap.values.html as string) ?? null;
+  const finalResearch = (snap.values.research as any) ?? null;
   const finalMessages = (snap.values.messages as BaseMessage[]) ?? [];
   const publishPayload = lastToolPayload<{ draft_id?: string }>(finalMessages, "publish_article");
   status = (snap.values.status as RunStatus) ?? status;
@@ -155,6 +159,9 @@ async function main(): Promise<void> {
   if (argValue("--notes")) sourceDesc.push(`笔记文件 ${argValue("--notes")}`);
   if (shouldAutoLoadMaterials() && (await loadMaterialsFromDir()))
     sourceDesc.push("materials/ 目录素材");
+  if (finalResearch && finalResearch.sources?.length > 0) {
+    sourceDesc.push(`联网研究（${finalResearch.provider}：${finalResearch.sources.length} 条参考来源）`);
+  }
   const usage = finalMessages.reduce(
     (sum, m) => {
       const u = (m as AIMessage).usage_metadata;
@@ -191,6 +198,7 @@ async function main(): Promise<void> {
       title: finalTitle,
       markdown: finalArticle,
       html: finalHtml ?? "",
+      research: finalResearch,
       log: [
         `生成方式：AI 流水线（LangChain ReAct + Harness 校验循环）`,
         `选题：${topic}`,

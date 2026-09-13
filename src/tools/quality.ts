@@ -1,5 +1,9 @@
 /** Lightweight deterministic quality checks. Warnings degrade a run but do not discard its draft. */
-export function inspectArticleQuality(markdown: string, html: string): string[] {
+export function inspectArticleQuality(
+  markdown: string,
+  html: string,
+  hasResearch = false,
+): string[] {
   const issues: string[] = [];
 
   if (process.env.REQUIRE_SUMMARY === "1" && !/(摘要|导语|本文要点)[:：]/.test(markdown)) {
@@ -13,9 +17,16 @@ export function inspectArticleQuality(markdown: string, html: string): string[] 
   const foundSensitive = sensitiveWords.filter((word) => markdown.includes(word));
   if (foundSensitive.length > 0) issues.push(`命中敏感词：${foundSensitive.join("、")}`);
 
-  if (process.env.REQUIRE_CITATIONS === "1" && /(据|数据显示|研究表明|报告指出)/.test(markdown)) {
-    const hasCitation = /https?:\/\/|\[[^\]]*(来源|参考|引用)[^\]]*\]/.test(markdown);
+  if (
+    (process.env.REQUIRE_CITATIONS === "1" || hasResearch) &&
+    /(据|数据显示|研究表明|报告指出)/.test(markdown)
+  ) {
+    const hasCitation = /https?:\/\/|\[[^\]]*(来源|参考|引用|\d+)[^\]]*\]/.test(markdown);
     if (!hasCitation) issues.push("存在事实性表述但没有链接或来源标记");
+  }
+
+  if (hasResearch && !/(##\s*参考资料|##\s*数据来源|###\s*参考资料)/.test(markdown)) {
+    issues.push("正文使用了联网检索，但未包含「## 参考资料」小节");
   }
 
   const localImages = [...markdown.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)]

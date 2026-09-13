@@ -12,6 +12,7 @@ import { OUTPUT_DIR, TRASH_DIR } from "./config.ts";
 import { renderMarkdownToWeChatHtml } from "./tools/formatSkill.ts";
 import { atomicCopyFile, atomicWriteFile } from "./util/files.ts";
 import { getArticleIndex, type IndexedArticle } from "./article-db.ts";
+import type { ResearchReport } from "./tools/researchEngine.ts";
 
 export interface ArticleMeta {
   id: string;
@@ -303,6 +304,7 @@ export async function createArticle(opts: {
   html?: string | null;
   log?: string[];
   run?: ArticleRunRecord;
+  research?: ResearchReport | null;
 }): Promise<string> {
   const id = `${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(
     Date.now() % 1e7,
@@ -325,14 +327,19 @@ export async function createArticle(opts: {
     await atomicWriteFile(join(stagingDir, "meta.json"), JSON.stringify(metaJson, null, 2), "utf8");
     await atomicWriteFile(join(stagingDir, "article.md"), opts.markdown, "utf8");
     await atomicWriteFile(join(stagingDir, "article.html"), html, "utf8");
-    await atomicWriteFile(
-      join(stagingDir, "readme.log"),
-      [
-        `[${ts()}] 文章创建（标题：「${rawTitle}」）`,
-        ...(opts.log ?? []).map((l) => `[${ts()}] ${l}`),
-      ].join("\n") + "\n",
-      "utf8",
-    );
+    const logs = [
+      `[${ts()}] 文章创建（标题：「${rawTitle}」）`,
+      ...(opts.log ?? []).map((l) => `[${ts()}] ${l}`),
+    ];
+    if (opts.research) {
+      await atomicWriteFile(
+        join(stagingDir, "research.json"),
+        JSON.stringify(opts.research, null, 2),
+        "utf8",
+      );
+      logs.push(`[${ts()}] 保存联网事实研究：${opts.research.sources.length} 条网络参考依据`);
+    }
+    await atomicWriteFile(join(stagingDir, "readme.log"), logs.join("\n") + "\n", "utf8");
     if (opts.run) {
       await atomicWriteFile(
         join(stagingDir, "run.json"),
@@ -348,6 +355,16 @@ export async function createArticle(opts: {
     throw error;
   }
   return id;
+}
+
+/** 读取文章落盘的联网研究报告（不存在则返回 null） */
+export async function readArticleResearch(id: string): Promise<ResearchReport | null> {
+  try {
+    const raw = await readFile(join(articleDir(id), "research.json"), "utf8");
+    return JSON.parse(raw) as ResearchReport;
+  } catch {
+    return null;
+  }
 }
 
 /** 修改文章标题 */

@@ -1,12 +1,12 @@
-# node-agent-pipeline 项目认知与架构体系文档
+# my-article-pipeline 项目认知与架构体系文档
 
-本文档全面梳理与沉淀 `node-agent-pipeline` 项目的整体架构、核心设计理念、各模块技术实现、关键数据流及扩展机制。
+本文档全面梳理与沉淀 `my-article-pipeline` 项目的整体架构、核心设计理念、各模块技术实现、关键数据流及扩展机制。
 
 ---
 
 ## 1. 项目定位与核心价值
 
-`node-agent-pipeline` 是一个专为**个人公众号文章持续生产、润色、管理与一键直投**打造的端到端生产流水线与工作台系统。
+`my-article-pipeline` 是一个专为**个人公众号文章持续生产、润色、管理与一键直投**打造的端到端生产流水线与工作台系统。
 
 ### 1.1 核心工作流
 1. **探讨与取材**：支持用户将日常与 AI 探讨的记录或要点沉淀在本地笔记中（`materials/` 目录或直接输入），主控智能体优先基于本地笔记提炼核心观点，避免 AI 无根基的泛泛而谈。
@@ -106,7 +106,7 @@
   - `images/`（本地插图存放目录）
   - `readme.log`（流转、编辑与投递日志）
   - `run.json`（运行指标、Token 消耗、耗时记录）
-  - `history/`（历史版本快照）
+  - `versions/`（历史版本快照）
 - **SQLite 索引元数据**：
   - 选用 Node 22 原生 `node:sqlite`（无第三方原生编译依赖）。
   - 开启 WAL 模式、外键关联、索引优化，负责文章列表、投递记录的高效检索与增量同步。
@@ -160,7 +160,7 @@
 ## 5. 项目工程结构映射表
 
 ```
-node-agent-pipeline/
+my-article-pipeline/
 ├── config/
 │   ├── accounts.example.json   # 微信公众号账号配置模版
 │   └── accounts.json           # 微信公众号账号实名配置（AppID, AppSecret, 默认封面）

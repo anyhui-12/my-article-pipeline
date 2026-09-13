@@ -73,6 +73,7 @@ import {
   saveArticleAiSession,
   trashArticle,
   restoreTrashedArticle,
+  readArticleResearch,
 } from "./articles.ts";
 import type { ArticleAiSession } from "./articles.ts";
 import { ensureDeliveriesIndexed, getArticleIndex } from "./article-db.ts";
@@ -207,9 +208,17 @@ interface Run {
 }
 const runs = new Map<string, Run>();
 
-function startRun(topic: string, notesFile: string | null, notesInline: string): Run {
+function startRun(
+  topic: string,
+  notesFile: string | null,
+  notesInline: string,
+  enableResearch?: boolean,
+): Run {
   const id = randomUUID().slice(0, 8);
   const args = ["src/index.ts", topic];
+  if (enableResearch === true) args.push("--research");
+  else if (enableResearch === false) args.push("--no-research");
+
   // Web 端素材必须显式提供；内联笔记经环境变量传给子进程。
   // 同时覆盖继承来的 NOTES_INLINE，避免空输入意外复用服务进程环境。
   const env = {
@@ -645,6 +654,12 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
         return sendJson(res, 200, await readArticleSource(id));
       }
 
+      // 读取联网研究资料：GET /api/articles/:id/research
+      if (sub === "/research" && method === "GET") {
+        const research = await readArticleResearch(id);
+        return sendJson(res, 200, { ok: true, research });
+      }
+
       // 修改文章标题：POST /api/articles/:id/title，body: { title }
       if (sub === "/title" && method === "POST") {
         const body = await readBody(req);
@@ -818,7 +833,9 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       if (topic.length < 2 || topic.length > 200) {
         return sendJson(res, 400, { error: "选题长度需 2~200 字" });
       }
-      const run = startRun(topic, null, String(body.notes ?? ""));
+      const enableResearch =
+        typeof body.enableResearch === "boolean" ? body.enableResearch : undefined;
+      const run = startRun(topic, null, String(body.notes ?? ""), enableResearch);
       return sendJson(res, 200, { runId: run.id });
     }
 

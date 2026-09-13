@@ -1,6 +1,6 @@
-# node-agent-pipeline：个人公众号文章生产工作台
+# my-article-pipeline
 
-个人公众号文章生产流水线。在原有 ReAct、Harness、SubAgent 和排版 Skill 架构基础上，去掉了对 exomind 私有服务的默认依赖：
+个人公众号文章生产流水线。基于 [node-agent-pipeline](https://github.com/helloworldtang/node-agent-pipeline) 的架构改造，去掉了对 exomind 私有服务的依赖：
 
 - **取材**：改为本地素材笔记（`materials/` 目录 / `--notes` 文件），适配「和 AI 探讨 → 整理结论 → 写成自己理解的版本」的工作流；可选挂任意 MCP server 补充检索
 - **发布**：直连微信公众号官方 API（AppID/AppSecret 按账号配置），抽象了 Publisher 接口，未来可扩展知乎/掘金等平台
@@ -36,7 +36,6 @@ cp .env.example .env          # 填入 LLM_API_KEY
 
 ```bash
 cd web
-npm install
 npm run dev
 ```
 
@@ -73,7 +72,7 @@ node src/index.ts "选题" --notes 笔记.md --publish 我的公众号
 ### 3. 直发已有稿件（不起 Agent，不需要 LLM key）
 
 ```bash
-node src/index.ts --publish-file output/<文章ID>/article.md --title "文章标题" --account 我的公众号
+node src/index.ts --publish-file output/2026-08-21.md --title "文章标题" --account 我的公众号
 ```
 
 实际生成的文章位于 `output/<文章ID>/article.md`。直发 Markdown 中的 `images/foo.png` 会按 Markdown 文件所在目录解析，并在投递时自动上传到微信图床。
@@ -97,7 +96,6 @@ node src/index.ts --publish-file 稿.md --title "标题" --account 我的公众�
 
 `--platform` / `PUBLISH_PLATFORM` / Web API `POST /api/publish` 的 `platform` 字段同一套取值：`wechat`（默认）、`exomind`、或逗号分隔多值同投；投递记录按平台分别落档，幂等防重键也按平台隔离。
 
-
 ### Web API 安全
 
 默认只监听 `127.0.0.1`。如果使用 `--host 0.0.0.0` 或其他远程地址，必须先配置 `API_TOKEN`，否则服务不会启动：
@@ -106,7 +104,7 @@ node src/index.ts --publish-file 稿.md --title "标题" --account 我的公众�
 API_TOKEN=一段足够长的随机字符串
 ```
 
-使用 Web 控制台时，可参考 `web/.env.example` 在 `web/.env` 配置同一个 `VITE_API_TOKEN`。请求体有大小限制，图片上传使用原始文件流；任务默认只允许并发运行一个，可通过 Web 的“取消任务”终止后台子进程。
+使用 Web 控制台时，在 `web/.env` 配置同一个 `VITE_API_TOKEN`。请求体有大小限制，图片上传使用原始文件流；任务默认只允许并发运行一个，可通过 Web 的“取消任务”终止后台子进程。
 
 ### 封面图
 

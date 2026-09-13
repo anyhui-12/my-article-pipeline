@@ -1,6 +1,7 @@
 // HarnessAgent 的状态 schema：messages + 业务字段
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 import type { BaseMessage } from "@langchain/core/messages";
+import type { ResearchReport } from "../tools/researchEngine.ts";
 
 const lastWins =
   <T>() =>
@@ -19,6 +20,10 @@ export const HarnessState = Annotation.Root({
   topic: Annotation<string | null>({ reducer: lastWins(), default: () => null }),
   // 用户素材笔记（和 AI 探讨整理出的结论/要点，可为空 = 凭模型自身知识写）
   notes: Annotation<string | null>({ reducer: lastWins(), default: () => null }),
+  // 联网研究报告与事实来源
+  research: Annotation<ResearchReport | null>({ reducer: lastWins(), default: () => null }),
+  // 是否显式启用联网研究
+  enableResearch: Annotation<boolean | null>({ reducer: lastWins(), default: () => null }),
   // 校验循环计数
   retryCount: Annotation<number>({ reducer: lastWins(), default: () => 0 }),
   // 写作 subagent 产出的文章标题

@@ -11,6 +11,12 @@ import { FORCE_FIRST_REFINE, MAX_RETRIES, MIN_ARTICLE_LEN, REQUIRED_SECTIONS } f
 import type { HarnessStateT } from "./state.ts";
 import { renderMarkdownToWeChatHtml } from "../tools/formatSkill.ts";
 import { inspectArticleQuality } from "../tools/quality.ts";
+import {
+  shouldPerformResearch,
+  performResearch,
+  formatResearchForPrompt,
+  type ResearchReport,
+} from "../tools/researchEngine.ts";
 
 /** 防护栏-入口：选题合法性（长度 2~200） */
 export async function inputGuardrail(state: HarnessStateT) {
@@ -36,9 +42,26 @@ export function routeAfterInput(state: HarnessStateT): "react" | typeof END {
 
 /** react 节点：调用主 ReAct，抽出 writer 的 title/article 与 format 的 html */
 export async function reactNode(state: HarnessStateT) {
+  let research: ResearchReport | null = state.research ?? null;
+  const inputMessages = [...state.messages];
+
+  // 1. 自动执行前置事实研究（按需）
+  if (!research && shouldPerformResearch({ enableResearch: state.enableResearch, notes: state.notes })) {
+    const topic = state.topic ?? "";
+    console.log(`[research] 开始联网检索事实资料：「${topic}」...`);
+    research = await performResearch(topic);
+    if (research && research.sources.length > 0) {
+      console.log(`[research] 检索完成，共聚合 ${research.sources.length} 条权威来源。`);
+      const researchPrompt = formatResearchForPrompt(research);
+      inputMessages.push(new HumanMessage(researchPrompt));
+    } else {
+      console.log(`[research] 未获取到有效外部来源，进入常规生成。`);
+    }
+  }
+
   const { react } = await buildReactAgent();
   const { messages } = await react.invoke(
-    { messages: state.messages },
+    { messages: inputMessages },
     { configurable: { thread_id: "react-main" }, recursionLimit: 60 },
   );
   const writerOut = lastToolPayload<{ title?: string; article?: string; model?: string }>(
@@ -55,6 +78,7 @@ export async function reactNode(state: HarnessStateT) {
     : null;
   return {
     messages,
+    research,
     title: writerOut?.title ?? state.title ?? (state.topic ? state.topic.slice(0, 30) : null),
     article: writerOut?.article ?? state.article,
     html: fmtOut?.html ?? state.html,
@@ -145,7 +169,8 @@ export async function outputGuardrail(state: HarnessStateT) {
   const titleOk = title.length > 0;
   const articleOk = article.trim().length > 0;
   const htmlOk = html.length > 0 && html.includes("<section");
-  const qualityIssues = articleOk && htmlOk ? inspectArticleQuality(article, html) : [];
+  const qualityIssues =
+    articleOk && htmlOk ? inspectArticleQuality(article, html, Boolean(state.research)) : [];
   const structuralOk =
     titleOk && articleOk && htmlOk && state.publishOk && state.status !== "failed";
   const ok = titleOk && articleOk && htmlOk && state.publishOk;

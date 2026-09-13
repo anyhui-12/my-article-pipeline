@@ -26,6 +26,24 @@ export interface ArticleVersion {
   createdAt: string;
 }
 
+export interface ResearchSource {
+  index: number;
+  title: string;
+  url: string;
+  snippet: string;
+  publishedDate?: string;
+  siteName?: string;
+}
+
+export interface ResearchReport {
+  topic: string;
+  queries: string[];
+  searchedAt: string;
+  provider: string;
+  sources: ResearchSource[];
+  summary?: string;
+}
+
 export interface AIChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -235,8 +253,13 @@ export const api = {
     uploadFile<{ ok: boolean; name: string }>(`/api/articles/${encodeURIComponent(id)}/images`, filename, file),
   articleImageUrl: (id: string, name: string) =>
     mediaUrl(`/api/articles/${encodeURIComponent(id)}/images/${encodeURIComponent(name)}`),
+  articleResearch: (id: string) =>
+    get<{ ok: boolean; research: ResearchReport | null }>(
+      `/api/articles/${encodeURIComponent(id)}/research`,
+    ),
 
-  run: (topic: string, notes: string) => post<{ runId: string }>("/api/run", { topic, notes }),
+  run: (topic: string, notes: string, enableResearch?: boolean) =>
+    post<{ runId: string }>("/api/run", { topic, notes, enableResearch }),
   cancelRun: (runId: string) =>
     post<{ ok: boolean; runId: string }>(`/api/run/${encodeURIComponent(runId)}/cancel`, {}),
   publish: (file: string, title: string, account: string, cover?: string) =>

@@ -8,10 +8,11 @@ import {
   type ArticleVersion,
   type AIChatMessage,
   type ArticleAiSession,
+  type ResearchReport,
 } from "./api";
 
 type Phase = "idle" | "running" | "done" | "degraded" | "cancelled" | "error";
-type Tab = "html" | "md" | "edit" | "log";
+type Tab = "html" | "md" | "edit" | "log" | "research";
 type DiffLine = { kind: "same" | "add" | "remove" | "notice"; text: string };
 
 interface SelectionInfo {
@@ -135,6 +136,9 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null); // 文章 id
   const [mdContent, setMdContent] = useState("");
   const [logContent, setLogContent] = useState("");
+  const [researchData, setResearchData] = useState<ResearchReport | null>(null);
+  const [researchLoading, setResearchLoading] = useState(false);
+  const [enableResearch, setEnableResearch] = useState(true);
   const [tab, setTab] = useState<Tab>("html");
   const [showAdd, setShowAdd] = useState(false);
   const [addTitle, setAddTitle] = useState("");
@@ -228,6 +232,11 @@ export default function App() {
     LLM_BASE_URL: { label: "LLM 接口地址", hint: "显示的是当前供应商的生效值；仅 custom 供应商必须手填" },
     LLM_MODEL_FLASH: { label: "编排模型", hint: "显示的是当前供应商的生效值；改它可覆盖默认" },
     LLM_MODEL_PRO: { label: "写作模型", hint: "显示的是当前供应商的生效值；改它可覆盖默认" },
+    SEARCH_PROVIDER: { label: "联网搜索供应商", hint: "tavily / serper / bocha / none" },
+    SEARCH_API_KEY: { label: "搜索 API Key", placeholder: "tvly-… / serper-… / bocha-…" },
+    SEARCH_BASE_URL: { label: "搜索接口地址", hint: "留空使用官方默认地址；也可配置私有代理端点" },
+    SEARCH_MAX_RESULTS: { label: "每次检索最大结果数", hint: "默认 5 条，建议 3~10" },
+    ENABLE_AUTO_RESEARCH: { label: "默认开启联网研究", hint: "填 1 为开启，0 为关闭（关闭时未提供素材笔记或手动勾选仍会按需检索）" },
     IMAGE_API_KEY: { label: "生图 API Key", placeholder: "sk-…" },
     IMAGE_BASE_URL: {
       label: "生图接口地址",
@@ -359,6 +368,7 @@ export default function App() {
     if (!selected) {
       setMdContent("");
       setLogContent("");
+      setResearchData(null);
       setVersions([]);
       setVersionPreview(null);
       setTitle("");
@@ -367,10 +377,23 @@ export default function App() {
 
     setMdContent("");
     setLogContent("");
+    setResearchData(null);
     setVersions([]);
     setVersionPreview(null);
     const matched = articles.find((a) => a.id === selected);
     setTitle(matched?.title ?? "");
+    setResearchLoading(true);
+    api
+      .articleResearch(selected)
+      .then(({ research }) => {
+        if (!cancelled) setResearchData(research);
+      })
+      .catch(() => {
+        if (!cancelled) setResearchData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setResearchLoading(false);
+      });
     api
       .articleVersions(selected)
       .then(({ versions: nextVersions }) => {
@@ -447,7 +470,7 @@ export default function App() {
     setPhase("running");
     setToast(null);
     try {
-      const { runId } = await api.run(topic.trim(), notes);
+      const { runId } = await api.run(topic.trim(), notes, enableResearch);
       setRunId(runId);
       closeRef.current = subscribeRun(
         runId,
@@ -1308,6 +1331,17 @@ export default function App() {
             />
           </div>
 
+          <div style={{ margin: "6px 0 10px 0" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.85rem", cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={enableResearch}
+                onChange={(e) => setEnableResearch(e.target.checked)}
+              />
+              <span>🌐 联网事实研究（检索最新网络动态与参考资料）</span>
+            </label>
+          </div>
+
           <div className="row">
             <button className="btn block" onClick={startRun} disabled={phase === "running"}>
               {phase === "running" ? "生产中…" : "开始生产"}
@@ -1509,6 +1543,9 @@ export default function App() {
                     <button className={tab === "log" ? "active" : ""} onClick={() => setTab("log")}>
                       产出日志
                     </button>
+                    <button className={tab === "research" ? "active" : ""} onClick={() => setTab("research")}>
+                      🌐 联网资料{researchData?.sources?.length ? ` (${researchData.sources.length})` : ""}
+                    </button>
                   </div>
 
                   {tab === "html" && selectedArticle.hasHtml && (
@@ -1520,6 +1557,66 @@ export default function App() {
                   )}
                   {tab === "md" && <div className="preview-md">{mdContent}</div>}
                   {tab === "log" && <div className="preview-md logview">{logContent}</div>}
+                  {tab === "research" && (
+                    <div className="preview-md" style={{ padding: "16px 20px" }}>
+                      {researchLoading ? (
+                        <div className="hint">正在加载联网研究资料…</div>
+                      ) : researchData && researchData.sources.length > 0 ? (
+                        <div>
+                          <div style={{ marginBottom: 16, borderBottom: "1px solid var(--border-color, #e5e7eb)", paddingBottom: 12 }}>
+                            <h4 style={{ margin: "0 0 8px 0" }}>🌐 事实检索与研究依据</h4>
+                            <div className="hint" style={{ fontSize: "0.85rem", lineHeight: 1.6 }}>
+                              <div><strong>检索主题：</strong>{researchData.topic}</div>
+                              <div><strong>检索词：</strong>{researchData.queries.map((q) => `「${q}」`).join("、")}</div>
+                              <div><strong>搜索源：</strong>{researchData.provider} · <strong>检索时间：</strong>{new Date(researchData.searchedAt).toLocaleString("zh-CN")} · <strong>共收录：</strong>{researchData.sources.length} 篇参考来源</div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {researchData.sources.map((src) => (
+                              <div
+                                key={src.index}
+                                style={{
+                                  border: "1px solid var(--border-color, #e5e7eb)",
+                                  borderRadius: 8,
+                                  padding: 12,
+                                  background: "var(--card-bg, rgba(255,255,255,0.02))",
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                                  <span style={{ fontWeight: "bold", color: "var(--accent, #3b82f6)" }}>[{src.index}]</span>
+                                  <a
+                                    href={src.url}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    style={{ fontWeight: 600, color: "var(--accent, #3b82f6)", textDecoration: "none" }}
+                                  >
+                                    {src.title}
+                                  </a>
+                                  {src.siteName && (
+                                    <span className="keyname" style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+                                      {src.siteName}
+                                    </span>
+                                  )}
+                                  {src.publishedDate && (
+                                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #9ca3af)", marginLeft: "auto" }}>
+                                      {src.publishedDate}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-secondary, #4b5563)", marginTop: 6 }}>
+                                  {src.snippet}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="hint" style={{ textAlign: "center", padding: "40px 0" }}>
+                          本篇文章未记录联网研究资料（由模型内置知识或本地素材直接生成）。
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {tab === "edit" && (
                     <div className="editbox">
                       <div className="editbox-head">

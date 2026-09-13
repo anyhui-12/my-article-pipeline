@@ -14,6 +14,11 @@ const EDITABLE = [
   "LLM_BASE_URL",
   "LLM_MODEL_FLASH",
   "LLM_MODEL_PRO",
+  "SEARCH_PROVIDER",
+  "SEARCH_API_KEY",
+  "SEARCH_BASE_URL",
+  "SEARCH_MAX_RESULTS",
+  "ENABLE_AUTO_RESEARCH",
   "IMAGE_API_KEY",
   "IMAGE_BASE_URL",
   "IMAGE_MODEL",
@@ -24,11 +29,14 @@ const EDITABLE = [
 type EditableKey = (typeof EDITABLE)[number];
 
 /** 密钥类字段：读取时掩码处理 */
-const SECRET_KEYS = new Set<string>(["LLM_API_KEY", "IMAGE_API_KEY"]);
+const SECRET_KEYS = new Set<string>(["LLM_API_KEY", "IMAGE_API_KEY", "SEARCH_API_KEY"]);
 
 /** 有内置默认值的字段：界面直接回填默认值，用户只需填 key */
 const DEFAULTS: Record<string, string> = {
   LLM_PROVIDER: "deepseek",
+  SEARCH_PROVIDER: "tavily",
+  SEARCH_MAX_RESULTS: "5",
+  ENABLE_AUTO_RESEARCH: "0",
   IMAGE_BASE_URL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   IMAGE_MODEL: "wanx2.1-t2i-turbo",
   IMAGE_COVER_PROMPT: DEFAULT_COVER_PROMPT,
