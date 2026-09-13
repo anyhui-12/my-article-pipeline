@@ -263,7 +263,13 @@ export const api = {
   cancelRun: (runId: string) =>
     post<{ ok: boolean; runId: string }>(`/api/run/${encodeURIComponent(runId)}/cancel`, {}),
   publish: (file: string, title: string, account: string, cover?: string) =>
-    post<{ ok: boolean; mediaId: string }>("/api/publish", { file, title, account, cover }),
+    post<{
+      ok: boolean;
+      mediaId: string;
+      /** true = 命中幂等：返回的是历史投递的草稿 id，未新建草稿 */
+      idempotent?: boolean;
+      results?: { platform: string; mediaId: string; idempotent: boolean }[];
+    }>("/api/publish", { file, title, account, cover }),
   deliveries: () =>
     get<{
       records: {

@@ -1124,7 +1124,14 @@ export default function App() {
     setToast(null);
     try {
       const r = await api.publish(selected, title.trim(), account);
-      setToast({ kind: "ok", text: `✓ 已投递到【${account}】草稿箱，media_id: ${r.mediaId}` });
+      if (r.idempotent) {
+        setToast({
+          kind: "ok",
+          text: `✓ 命中幂等：该文章此前已投递过【${account}】，返回的是历史草稿（media_id: ${r.mediaId}）。若你已在公众号后台删除旧草稿，草稿箱不会有新条目`,
+        });
+      } else {
+        setToast({ kind: "ok", text: `✓ 已投递到【${account}】草稿箱，media_id: ${r.mediaId}` });
+      }
       refreshDeliveries().catch(() => {});
       refreshArticles().catch(() => {});
     } catch (e) {

@@ -127,7 +127,12 @@ export function buildPublishTool(platforms: string | string[], account: string) 
       const results = [];
       for (const platform of list) {
         const r = await publishArticle({ platform, account, title, markdown });
-        results.push({ platform: r.platform, draft_id: r.id });
+        // 幂等命中（同一文章/账号重复投递）透出给调用方，避免「投了新草稿」的误解
+        results.push({
+          platform: r.platform,
+          draft_id: r.id,
+          idempotent: Boolean(r.extra?.idempotent),
+        });
       }
       return { ok: true, account, results };
     },

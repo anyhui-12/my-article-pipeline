@@ -918,6 +918,8 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
         ok: true,
         mediaId: results[0]?.mediaId,
         account,
+        // 幂等命中透出：任一平台命中历史投递即置 true，前端据此提示「返回的是历史草稿」
+        idempotent: results.some((r) => r.idempotent),
         results,
       });
     }
