@@ -215,6 +215,18 @@ async function uploadInlineImages(
   return out;
 }
 
+// ---- 投前预检：微信草稿 content 字段约 20000 字符硬限（按字符串长度计，含 HTML 标签）----
+export const WECHAT_CONTENT_LIMIT = 20_000;
+
+/** 超限直接抛中文错误（含当前/上限/超出字符数与可操作建议），在建草稿请求发出前本地拦截 */
+export function assertWechatContentLength(content: string): void {
+  const over = content.length - WECHAT_CONTENT_LIMIT;
+  if (over <= 0) return;
+  throw new Error(
+    `正文超出微信草稿长度上限：当前 ${content.length} 字符，上限 ${WECHAT_CONTENT_LIMIT} 字符（超出 ${over} 字符）。建议精简正文，或拆分为多篇文章分别投递`,
+  );
+}
+
 // ---- 发布器 ----
 export function createWechatPublisher(account: string): Publisher {
   return {
@@ -228,8 +240,11 @@ export function createWechatPublisher(account: string): Publisher {
     }: PublishInput): Promise<PublishResult> {
       const cfg = await loadAccount(account);
       const token = await getAccessToken(cfg);
-      const thumbMediaId = await uploadCover(cfg, token, coverPath);
       const content = await uploadInlineImages(html, cfg, token, baseDir);
+      // 投前预检基于最终发给微信的正文（本地插图已替换为微信图床 URL）；
+      // 超限在此拦截，不再上传封面、不发建草稿请求
+      assertWechatContentLength(content);
+      const thumbMediaId = await uploadCover(cfg, token, coverPath);
 
       const body = {
         articles: [
