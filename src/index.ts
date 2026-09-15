@@ -14,6 +14,7 @@ import { parsePlatforms, publishArticle } from "./tools/publish.ts";
 import { createArticle } from "./articles.ts";
 import type { ArticleRunRecord } from "./articles.ts";
 import type { RunStatus } from "./harness/state.ts";
+import type { ResearchReport } from "./tools/researchEngine.ts";
 import { lastToolPayload } from "./util/messages.ts";
 import { atomicWriteFile } from "./util/files.ts";
 
@@ -92,7 +93,9 @@ async function main(): Promise<void> {
   console.log(`素材：${notes ? `${notes.length} 字符` : "无（凭模型自身知识写作）"}`);
 
   const enableResearch = hasFlag("--research") ? true : hasFlag("--no-research") ? false : null;
-  console.log(`联网研究：${enableResearch === true ? "强制开启" : enableResearch === false ? "显式关闭" : "自动（按需）"}`);
+  console.log(
+    `联网研究：${enableResearch === true ? "强制开启" : enableResearch === false ? "显式关闭" : "自动（按需）"}`,
+  );
 
   const { toolNames } = await buildReactAgent();
   console.log(`[react] 工具集：${toolNames.join(", ")}\n`);
@@ -140,7 +143,7 @@ async function main(): Promise<void> {
   const finalTitle = (snap.values.title as string) ?? topic;
   const finalArticle = (snap.values.article as string) ?? null;
   const finalHtml = (snap.values.html as string) ?? null;
-  const finalResearch = (snap.values.research as any) ?? null;
+  const finalResearch = (snap.values.research as ResearchReport | null) ?? null;
   const finalMessages = (snap.values.messages as BaseMessage[]) ?? [];
   const publishPayload = lastToolPayload<{ draft_id?: string }>(finalMessages, "publish_article");
   status = (snap.values.status as RunStatus) ?? status;
@@ -160,7 +163,9 @@ async function main(): Promise<void> {
   if (shouldAutoLoadMaterials() && (await loadMaterialsFromDir()))
     sourceDesc.push("materials/ 目录素材");
   if (finalResearch && finalResearch.sources?.length > 0) {
-    sourceDesc.push(`联网研究（${finalResearch.provider}：${finalResearch.sources.length} 条参考来源）`);
+    sourceDesc.push(
+      `联网研究（${finalResearch.provider}：${finalResearch.sources.length} 条参考来源）`,
+    );
   }
   const usage = finalMessages.reduce(
     (sum, m) => {

@@ -80,7 +80,10 @@ export const SEARCH_API_KEY =
   process.env.BOCHA_API_KEY ??
   "";
 export const SEARCH_BASE_URL = process.env.SEARCH_BASE_URL ?? "";
-export const SEARCH_MAX_RESULTS = Math.max(1, Math.min(20, Number(process.env.SEARCH_MAX_RESULTS ?? 5)));
+export const SEARCH_MAX_RESULTS = Math.max(
+  1,
+  Math.min(20, Number(process.env.SEARCH_MAX_RESULTS ?? 5)),
+);
 export const ENABLE_AUTO_RESEARCH = process.env.ENABLE_AUTO_RESEARCH === "1";
 
 // === 可选：通用 MCP 素材服务（不设 MCP_COMMAND 则不启用）===

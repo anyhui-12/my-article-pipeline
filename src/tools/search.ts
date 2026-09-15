@@ -1,12 +1,7 @@
 import { tool } from "langchain";
 import { z } from "zod";
 import { fetchWithRetry } from "../util/http.ts";
-import {
-  SEARCH_API_KEY,
-  SEARCH_BASE_URL,
-  SEARCH_MAX_RESULTS,
-  SEARCH_PROVIDER,
-} from "../config.ts";
+import { SEARCH_API_KEY, SEARCH_BASE_URL, SEARCH_MAX_RESULTS, SEARCH_PROVIDER } from "../config.ts";
 
 export interface SearchResultItem {
   title: string;
@@ -87,14 +82,16 @@ async function searchTavily(
     }>;
   };
 
-  return (data.results ?? []).map((r) => ({
-    title: cleanText(r.title, 120) || "未命名网页",
-    url: String(r.url ?? "").trim(),
-    snippet: cleanText(r.content, 600),
-    publishedDate: r.published_date,
-    siteName: extractSiteName(r.url ?? ""),
-    score: typeof r.score === "number" ? r.score : undefined,
-  })).filter((item) => item.url && item.snippet);
+  return (data.results ?? [])
+    .map((r) => ({
+      title: cleanText(r.title, 120) || "未命名网页",
+      url: String(r.url ?? "").trim(),
+      snippet: cleanText(r.content, 600),
+      publishedDate: r.published_date,
+      siteName: extractSiteName(r.url ?? ""),
+      score: typeof r.score === "number" ? r.score : undefined,
+    }))
+    .filter((item) => item.url && item.snippet);
 }
 
 /** 统一调用 Serper (Google Search) API */
@@ -136,13 +133,15 @@ async function searchSerper(
     }>;
   };
 
-  return (data.organic ?? []).map((r) => ({
-    title: cleanText(r.title, 120) || "未命名网页",
-    url: String(r.link ?? "").trim(),
-    snippet: cleanText(r.snippet, 600),
-    publishedDate: r.date,
-    siteName: extractSiteName(r.link ?? ""),
-  })).filter((item) => item.url && item.snippet);
+  return (data.organic ?? [])
+    .map((r) => ({
+      title: cleanText(r.title, 120) || "未命名网页",
+      url: String(r.link ?? "").trim(),
+      snippet: cleanText(r.snippet, 600),
+      publishedDate: r.date,
+      siteName: extractSiteName(r.link ?? ""),
+    }))
+    .filter((item) => item.url && item.snippet);
 }
 
 /** 统一调用 Bocha（博查）中文搜索 API */
@@ -191,13 +190,15 @@ async function searchBocha(
   };
 
   const pages = data.data?.webPages?.value ?? [];
-  return pages.map((r) => ({
-    title: cleanText(r.name, 120) || "未命名网页",
-    url: String(r.url ?? "").trim(),
-    snippet: cleanText(r.snippet, 600),
-    publishedDate: r.datePublished,
-    siteName: r.siteName || extractSiteName(r.url ?? ""),
-  })).filter((item) => item.url && item.snippet);
+  return pages
+    .map((r) => ({
+      title: cleanText(r.name, 120) || "未命名网页",
+      url: String(r.url ?? "").trim(),
+      snippet: cleanText(r.snippet, 600),
+      publishedDate: r.datePublished,
+      siteName: r.siteName || extractSiteName(r.url ?? ""),
+    }))
+    .filter((item) => item.url && item.snippet);
 }
 
 /** 执行网络检索入口函数，支持优雅降级 */

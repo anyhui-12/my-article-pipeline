@@ -46,7 +46,10 @@ export async function reactNode(state: HarnessStateT) {
   const inputMessages = [...state.messages];
 
   // 1. 自动执行前置事实研究（按需）
-  if (!research && shouldPerformResearch({ enableResearch: state.enableResearch, notes: state.notes })) {
+  if (
+    !research &&
+    shouldPerformResearch({ enableResearch: state.enableResearch, notes: state.notes })
+  ) {
     const topic = state.topic ?? "";
     console.log(`[research] 开始联网检索事实资料：「${topic}」...`);
     research = await performResearch(topic);

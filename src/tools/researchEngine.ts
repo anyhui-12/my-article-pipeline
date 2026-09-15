@@ -93,10 +93,15 @@ export async function performResearch(
     customQueries?: string[];
   } = {},
 ): Promise<ResearchReport | null> {
-  const queries = options.customQueries?.length ? options.customQueries : generateSearchQueries(topic);
+  const queries = options.customQueries?.length
+    ? options.customQueries
+    : generateSearchQueries(topic);
   if (queries.length === 0) return null;
 
-  const maxPerQuery = Math.max(2, Math.ceil((options.maxResults ?? SEARCH_MAX_RESULTS) / queries.length));
+  const maxPerQuery = Math.max(
+    2,
+    Math.ceil((options.maxResults ?? SEARCH_MAX_RESULTS) / queries.length),
+  );
   const allResults: SearchResultItem[] = [];
   let usedProvider = SEARCH_PROVIDER;
 
@@ -128,11 +133,13 @@ export function formatResearchForPrompt(report: ResearchReport | null | undefine
     return "";
   }
 
-  const sourceBlocks = report.sources.map((s) => {
-    const dateStr = s.publishedDate ? ` (发布日期: ${s.publishedDate})` : "";
-    const siteStr = s.siteName ? ` [来源: ${s.siteName}]` : "";
-    return `[${s.index}] 《${s.title}》${siteStr}${dateStr}\n    链接: ${s.url}\n    摘要要点: ${s.snippet}`;
-  }).join("\n\n");
+  const sourceBlocks = report.sources
+    .map((s) => {
+      const dateStr = s.publishedDate ? ` (发布日期: ${s.publishedDate})` : "";
+      const siteStr = s.siteName ? ` [来源: ${s.siteName}]` : "";
+      return `[${s.index}] 《${s.title}》${siteStr}${dateStr}\n    链接: ${s.url}\n    摘要要点: ${s.snippet}`;
+    })
+    .join("\n\n");
 
   return [
     `<untrusted_web_research topic="${report.topic.replace(/["<>]/g, "")}">`,
